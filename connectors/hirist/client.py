@@ -314,6 +314,8 @@ def update_work_experience(
     formatted_list = []
     for exp in experiences:
         item = dict(exp)
+        if "isCurrent" in item:
+            item["isCurrent"] = 1 if item["isCurrent"] in (True, 1, "1", "true", "True") else 0
         if item.get("delete") is True or item.get("status") == 0:
             item["status"] = 0
             item["infoString"] = "g6"

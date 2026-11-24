@@ -304,9 +304,9 @@ def build_employment_payload(
     employments = []
 
     for w in work_list:
-        is_current = w.get("isCurrent", False) or w.get("endDate") is None
+        is_current = bool(w.get("isCurrent", False) or w.get("endDate") is None)
         start_date = w.get("startDate", "")
-        end_date = today_str if is_current else w.get("endDate", "")
+        end_date = "" if is_current else (w.get("endDate") or "")
 
         summary_pts = w.get("highlights", [])
         if isinstance(summary_pts, list):
