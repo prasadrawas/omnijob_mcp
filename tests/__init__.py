@@ -1,0 +1,3 @@
+"""
+OmniJob MCP Test Suite.
+"""
