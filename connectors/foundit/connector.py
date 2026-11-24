@@ -101,7 +101,12 @@ class FounditConnector(BaseConnector):
         dry_run: bool = False,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        return client.apply_to_job(job_id=job_id, questionnaire_answers=answers, dry_run=dry_run)
+        answers_list = None
+        if isinstance(answers, list):
+            answers_list = answers
+        elif isinstance(answers, dict):
+            answers_list = [{"questionId": str(k), "answer": v} for k, v in answers.items()]
+        return client.apply_to_job(job_id=job_id, answers=answers_list, dry_run=dry_run)
 
     def save_job(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
         return client.save_job(job_id=job_id)
@@ -137,47 +142,40 @@ class FounditConnector(BaseConnector):
             summary = payload.get("summary") or payload.get("profile_summary") or kwargs.get("summary") or ""
             return client.update_profile_summary(summary)
         elif action == "update_basic":
+            full_name = payload.get("full_name") or payload.get("name") or "Prasad Rawas"
+            years = int(payload.get("years") or payload.get("total_experience_years") or 5)
+            months = int(payload.get("months") or payload.get("total_experience_months") or 0)
+            city_text = payload.get("city_text") or payload.get("city") or payload.get("location") or "Pune"
             return client.update_basic_profile(
-                first_name=payload.get("first_name"),
-                last_name=payload.get("last_name"),
-                mobile=payload.get("mobile"),
-                current_location=payload.get("current_location"),
-                total_experience_years=payload.get("total_experience_years"),
-                total_experience_months=payload.get("total_experience_months"),
-                notice_period=payload.get("notice_period"),
+                full_name=full_name,
+                years=years,
+                months=months,
+                city_text=city_text,
             )
         elif action == "update_skills":
             skills = payload.get("skills") or kwargs.get("skills") or []
             return client.add_skills(skills)
         elif action == "update_employment":
             return client.update_employment(
-                designation=payload.get("designation", ""),
-                company_name=payload.get("company_name", ""),
-                start_date=payload.get("start_date", ""),
-                end_date=payload.get("end_date"),
-                is_current=payload.get("is_current", True),
-                notice_period=payload.get("notice_period", "30 days"),
-                annual_salary=payload.get("annual_salary"),
-                job_description=payload.get("job_description", ""),
+                employment_id=payload.get("employment_id") or payload.get("id"),
+                company_text=payload.get("company_text") or payload.get("company_name") or payload.get("company", "Aeologic Technologies Pvt Ltd"),
+                designation_text=payload.get("designation_text") or payload.get("designation", "Software Engineer"),
+                start_date=payload.get("start_date", "2021-08-01"),
+                current=payload.get("current", payload.get("is_current", True)),
+                salary=payload.get("salary") or payload.get("annual_salary", 1200000),
+                notice_days=payload.get("notice_days") or 30,
             )
         elif action == "update_education":
             return client.add_education(
-                degree_type=payload.get("degree_type", ""),
-                degree_name=payload.get("degree_name", ""),
-                specialization=payload.get("specialization", ""),
-                institute_name=payload.get("institute_name", ""),
-                passing_year=payload.get("passing_year", 2022),
-                grading_system=payload.get("grading_system", "Percentage"),
-                marks=payload.get("marks", 85.0),
-            )
-        elif action == "update_preferences":
-            return client.update_job_preferences(
-                preferred_locations=payload.get("preferred_locations"),
-                preferred_job_types=payload.get("preferred_job_types"),
-                expected_salary=payload.get("expected_salary"),
+                qualification_id=payload.get("qualification_id", "7de0a237-15bc-4ab0-8546-c1a7d8b1d724"),
+                qualification_text=payload.get("qualification_text", payload.get("degree_name", "Masters in Technology (M.Tech/M.E)")),
+                specialization_id=payload.get("specialization_id", "cbdfaea4-43bd-450f-9688-d5e1f4622552"),
+                specialization_text=payload.get("specialization_text", payload.get("specialization", "Computers")),
+                college_id=payload.get("college_id", "3f945c5e-0aec-11ec-9a03-0242ac130003"),
+                college_text=payload.get("college_text", payload.get("institute_name", "Pune Institute of Computer Technology, Society for Computer Technology and Research")),
+                year_of_passing=int(payload.get("year_of_passing") or payload.get("passing_year") or 2022),
             )
         elif action == "touch_pulse":
-            # For foundit, updating summary with same value pulses profile
             prof = client.get_profile()
             cur_sum = prof.get("profile_summary", "")
             return client.update_profile_summary(cur_sum)
@@ -186,7 +184,7 @@ class FounditConnector(BaseConnector):
 
     def manage_account(self, action: str, **kwargs: Any) -> Dict[str, Any]:
         if action == "recommendations":
-            return client.get_recommended_jobs(start=kwargs.get("start", 0), limit=kwargs.get("limit", 20))
+            return client.get_recommended_jobs()
         elif action == "applied_jobs":
             return client.get_applied_jobs(start=kwargs.get("start", 0), limit=kwargs.get("limit", 20))
         elif action == "saved_jobs":

@@ -176,8 +176,10 @@ class NaukriConnector(BaseConnector):
             return analytics.get_recruiter_inbox()
         elif action == "analytics":
             return analytics.get_profile_analytics()
-        elif action == "salary_components":
-            return analytics.get_salary_components()
+        elif action == "salary_components" or action == "salary_labels":
+            return analytics.get_salary_labels()
+        elif action == "notifications":
+            return analytics.get_notification_summary()
         elif action == "blocked_companies":
             return analytics.get_blocked_companies()
         elif action == "block_company":
@@ -185,7 +187,19 @@ class NaukriConnector(BaseConnector):
         return {"success": False, "error": f"Unsupported account action: {action}"}
 
     def lookup_taxonomy(self, type_name: str, query: str, **kwargs: Any) -> Dict[str, Any]:
-        return taxonomy.search_taxonomy(entity_type=type_name, query=query, limit=kwargs.get("limit", 10))
+        entity_map = {
+            "locations": "city",
+            "location": "city",
+            "cities": "city",
+            "city": "city",
+            "skills": "certificate",
+            "certifications": "certificate",
+            "certificate": "certificate",
+            "languages": "language",
+            "language": "language",
+        }
+        mapped_type = entity_map.get(type_name.lower(), type_name.lower())
+        return taxonomy.search_taxonomy(entity_type=mapped_type, query=query, limit=kwargs.get("limit", 10))
 
     def refresh_session(self) -> Dict[str, Any]:
         at, rt = auth.resolve_auth_tokens()

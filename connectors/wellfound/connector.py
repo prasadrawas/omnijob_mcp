@@ -44,11 +44,13 @@ class WellfoundConnector(BaseConnector):
         items = raw.get("jobs", []) if isinstance(raw, dict) else (raw if isinstance(raw, list) else [])
         normalized = []
         for j in items:
+            comp_obj = j.get("company")
+            comp_name = j.get("company_name") or (comp_obj.get("name") if isinstance(comp_obj, dict) else comp_obj) or ""
             normalized.append({
                 "id": str(j.get("id") or j.get("job_id", "")),
                 "platform": "wellfound",
                 "title": j.get("title") or j.get("role", ""),
-                "company": j.get("company_name") or j.get("company", ""),
+                "company": str(comp_name),
                 "location": j.get("location") or "",
                 "experience": str(j.get("experience", "")),
                 "salary": str(j.get("salary") or j.get("compensation", "")),

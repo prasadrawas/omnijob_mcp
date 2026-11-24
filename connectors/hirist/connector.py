@@ -38,33 +38,38 @@ class HiristConnector(BaseConnector):
         limit: int = 20,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        raw = client.search_jobs(query=query, location=location or "", min_exp=experience, page=(start // limit) + 1 if limit else 1)
-        # Hirist returns list or dict with jobs
-        job_list = raw.get("jobs", []) if isinstance(raw, dict) else (raw if isinstance(raw, list) else [])
+        res = client.search_jobs(query=query, location=location or "", min_exp=experience, size=limit, page=(start // limit) + 1 if limit else 1)
+        raw = res[1] if isinstance(res, tuple) else res
+        if not isinstance(raw, dict):
+            raw = {}
+        job_list = raw.get("data") or raw.get("jobs") or []
         normalized = []
         for j in job_list:
             if not isinstance(j, dict):
                 continue
+            locs = j.get("locations", [])
+            loc_str = ", ".join([l.get("name", "") if isinstance(l, dict) else str(l) for l in locs]) if locs else j.get("location", "")
+            exp_str = f"{j.get('min', 0)}-{j.get('max', 0)} Yrs" if j.get("min") is not None else str(j.get("experience", ""))
             normalized.append({
                 "id": str(j.get("id") or j.get("job_id", "")),
                 "platform": "hirist",
-                "title": j.get("title", ""),
-                "company": j.get("company_name") or j.get("company", ""),
-                "location": j.get("location", ""),
-                "experience": str(j.get("experience", "")),
+                "title": j.get("title") or j.get("jobdesignation", ""),
+                "company": j.get("companyName") or j.get("organization") or j.get("company", ""),
+                "location": loc_str,
+                "experience": exp_str,
                 "salary": str(j.get("salary", "")),
                 "skills": j.get("skills", []),
-                "posted_date": str(j.get("posted_date", "")),
-                "apply_url": j.get("apply_url", ""),
+                "posted_date": str(j.get("createdAt") or j.get("posted_date", "")),
+                "apply_url": j.get("jobDetailUrl") or f"https://www.hirist.tech/j/{j.get('id')}.html",
                 "is_easy_apply": True,
                 "metadata": {
-                    "is_applied": j.get("is_applied", False),
-                    "is_saved": j.get("is_saved", False),
+                    "is_applied": j.get("isApplied", False),
+                    "is_saved": j.get("isSaved", False),
                 }
             })
         return {
             "platform": "hirist",
-            "total": raw.get("total", len(normalized)) if isinstance(raw, dict) else len(normalized),
+            "total": raw.get("totalJobs", raw.get("count", len(normalized))),
             "start": start,
             "limit": limit,
             "jobs": normalized,
@@ -72,22 +77,26 @@ class HiristConnector(BaseConnector):
         }
 
     def get_job_details(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
-        raw = client.get_job_details(job_id=job_id)
+        res = client.get_job_details(job_id=job_id)
+        raw = res[1] if isinstance(res, tuple) else res
         if not isinstance(raw, dict):
             return {"platform": "hirist", "id": job_id, "error": str(raw)}
+        data = raw.get("data", raw)
+        locs = data.get("locations", [])
+        loc_str = ", ".join([l.get("name", "") if isinstance(l, dict) else str(l) for l in locs]) if locs else data.get("location", "")
         return {
             "platform": "hirist",
-            "id": str(raw.get("id") or job_id),
-            "title": raw.get("title", ""),
-            "company": raw.get("company_name") or raw.get("company", ""),
-            "location": raw.get("location", ""),
-            "description": raw.get("description") or raw.get("job_description", ""),
-            "experience": str(raw.get("experience", "")),
-            "salary": str(raw.get("salary", "")),
-            "skills": raw.get("skills", []),
-            "company_info": raw.get("company_info", {}),
-            "screening_questions": raw.get("assessment") or raw.get("screening_questions"),
-            "can_apply": not raw.get("is_applied", False),
+            "id": str(data.get("id") or job_id),
+            "title": data.get("title") or data.get("jobdesignation", ""),
+            "company": data.get("companyName") or data.get("organization") or "",
+            "location": loc_str,
+            "description": data.get("jobDescription") or data.get("introText") or "",
+            "experience": f"{data.get('min', 0)}-{data.get('max', 0)} Yrs" if data.get("min") is not None else "",
+            "salary": str(data.get("salary", "")),
+            "skills": data.get("skills", []),
+            "company_info": data.get("company_info", {}),
+            "screening_questions": data.get("assessment") or data.get("screening_questions"),
+            "can_apply": not data.get("isApplied", False),
             "metadata": raw,
         }
 
@@ -105,13 +114,20 @@ class HiristConnector(BaseConnector):
                 "status": "dry_run_success",
                 "message": f"Dry-run application check succeeded for Hirist job {job_id}",
             }
-        return client.apply_to_job(job_id=job_id, answers=answers or {})
+        coverletter = answers.get("coverletter") if isinstance(answers, dict) else kwargs.get("coverletter")
+        res = client.apply_to_job(job_id=job_id, coverletter=coverletter)
+        raw = res[1] if isinstance(res, tuple) else res
+        return raw if isinstance(raw, dict) else {"result": raw}
 
     def save_job(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
-        return client.save_job(job_id=job_id)
+        res = client.save_job(job_id=job_id)
+        raw = res[1] if isinstance(res, tuple) else res
+        return raw if isinstance(raw, dict) else {"result": raw}
 
     def unsave_job(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
-        return client.unsave_job(job_id=job_id)
+        res = client.unsave_job(job_id=job_id)
+        raw = res[1] if isinstance(res, tuple) else res
+        return raw if isinstance(raw, dict) else {"result": raw}
 
     def get_applied_jobs(self, start: int = 0, limit: int = 20, **kwargs: Any) -> Dict[str, Any]:
         count = client.get_applied_job_count()
@@ -122,51 +138,76 @@ class HiristConnector(BaseConnector):
         }
 
     def get_profile(self, fields: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Any]:
-        raw = client.get_profile()
+        res = client.get_profile()
+        raw = res[1] if isinstance(res, tuple) else res
         if not isinstance(raw, dict):
             return {"platform": "hirist", "error": str(raw)}
+        locs = raw.get("locations", [])
+        loc_str = ", ".join([l.get("name", "") if isinstance(l, dict) else str(l) for l in locs]) if locs else raw.get("location", "")
         return {
             "platform": "hirist",
-            "name": raw.get("name") or raw.get("full_name"),
+            "name": raw.get("name"),
             "email": raw.get("email"),
-            "mobile": raw.get("mobile") or raw.get("phone"),
-            "headline": raw.get("headline") or raw.get("designation"),
-            "summary": raw.get("summary") or raw.get("about"),
-            "location": raw.get("location") or raw.get("city"),
+            "mobile": raw.get("phone"),
+            "headline": raw.get("currentDesignation"),
+            "summary": raw.get("about"),
+            "location": loc_str,
             "skills": [s.get("name") if isinstance(s, dict) else str(s) for s in raw.get("skills", [])],
-            "employment": raw.get("work_experience") or raw.get("employment", []),
-            "education": raw.get("education", []),
+            "current_company": raw.get("currentOrganization"),
+            "experience_years": raw.get("experienceYear"),
+            "employment": raw.get("professionalInfo", []),
+            "education": raw.get("educationInfo", []),
             "raw": raw,
         }
 
     def update_profile(self, action: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Dict[str, Any]:
         payload = payload or {}
         if action == "touch_pulse":
-            return client.touch_profile_pulse()
+            res = client.touch_profile_pulse()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_skills":
             skills = payload.get("skills") or kwargs.get("skills") or []
-            return client.update_skills(skills)
+            res = client.update_skills(skills)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_basic":
-            return client.update_personal_details(payload)
+            res = client.update_personal_details(payload)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_employment":
-            return client.update_work_experience(payload)
+            res = client.update_work_experience(payload)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_education":
-            return client.update_education(payload)
+            res = client.update_education(payload)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         return {"success": False, "error": f"Unknown update action: {action}"}
 
     def manage_account(self, action: str, **kwargs: Any) -> Dict[str, Any]:
         if action == "recommendations" or action == "feed":
-            return client.get_job_feed()
+            res = client.get_job_feed()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "blocked_companies":
-            return client.get_blocked_companies()
+            res = client.get_blocked_companies()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "block_company":
             company = kwargs.get("company_name") or kwargs.get("company", "")
-            return client.block_or_unblock_company(company=company, block=True)
+            res = client.block_or_unblock_company(company=company, block=True)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         return {"success": False, "error": f"Unsupported account action: {action}"}
 
     def lookup_taxonomy(self, type_name: str, query: str, **kwargs: Any) -> Dict[str, Any]:
         if type_name == "companies":
-            return client.suggest_companies(query=query)
+            res = client.suggest_companies(query=query)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         elif type_name == "institutes":
-            return client.suggest_institutes(query=query)
+            res = client.suggest_institutes(query=query)
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         return {"platform": "hirist", "query": query, "suggestions": []}

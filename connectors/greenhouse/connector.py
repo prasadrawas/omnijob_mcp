@@ -77,16 +77,15 @@ class GreenhouseConnector(BaseConnector):
         if not board_token:
             board_token = "cloudflare"  # default fallback
         raw = client.get_job_details(board_token=board_token, job_id=job_id)
-        if not raw.get("success"):
+        if raw.get("status_code") not in [200, None]:
             return raw
-        job = raw.get("job", {})
         return {
             "platform": "greenhouse",
             "id": f"{board_token}:{job_id}",
-            "title": job.get("title", ""),
+            "title": raw.get("title", ""),
             "company": board_token,
-            "location": job.get("location", {}).get("name", "") if isinstance(job.get("location"), dict) else str(job.get("location", "")),
-            "description": raw.get("description", ""),
+            "location": str(raw.get("location", "")),
+            "description": raw.get("description_text", ""),
             "experience": None,
             "salary": None,
             "skills": [],
@@ -117,7 +116,7 @@ class GreenhouseConnector(BaseConnector):
             board_token=board_token or "cloudflare",
             job_id=job_id,
             candidate_data=candidate_data,
-            resume_file_path=kwargs.get("resume_file_path"),
+            resume_path=kwargs.get("resume_file_path") or kwargs.get("resume_path"),
             dry_run=dry_run,
         )
 

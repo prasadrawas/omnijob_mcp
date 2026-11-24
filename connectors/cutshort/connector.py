@@ -36,7 +36,8 @@ class CutshortConnector(BaseConnector):
         limit: int = 20,
         **kwargs: Any,
     ) -> Dict[str, Any]:
-        status_code, raw = client.search_jobs(query=query, location=location or "", min_exp=experience, limit=limit)
+        res = client.search_jobs(query=query, location=location or "", min_exp=experience, limit=limit)
+        raw = res[1] if isinstance(res, tuple) else res
         if not isinstance(raw, dict):
             raw = {}
         items = raw.get("jobs") or raw.get("opportunities") or []
@@ -69,7 +70,8 @@ class CutshortConnector(BaseConnector):
         }
 
     def get_job_details(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
-        raw = client.get_job_details(job_id=job_id)
+        res = client.get_job_details(job_id=job_id)
+        raw = res[1] if isinstance(res, tuple) else res
         if not isinstance(raw, dict):
             return {"platform": "cutshort", "id": job_id, "error": str(raw)}
         return {
@@ -102,43 +104,68 @@ class CutshortConnector(BaseConnector):
                 "status": "dry_run_success",
                 "message": f"Dry-run application check succeeded for Cutshort job {job_id}",
             }
-        return client.apply_to_job(job_id=job_id, message=kwargs.get("message", ""))
+        res = client.apply_to_job(job_id=job_id, context=kwargs.get("context") or answers)
+        raw = res[1] if isinstance(res, tuple) else res
+        return raw if isinstance(raw, dict) else {"status": "error", "raw": raw}
 
     def save_job(self, job_id: str, **kwargs: Any) -> Dict[str, Any]:
-        return client.save_job(job_id=job_id)
+        res = client.save_job(job_id=job_id)
+        raw = res[1] if isinstance(res, tuple) else res
+        return raw if isinstance(raw, dict) else {"status": "error", "raw": raw}
 
     def get_profile(self, fields: Optional[List[str]] = None, **kwargs: Any) -> Dict[str, Any]:
-        raw = client.get_candidate_profile()
+        res = client.get_candidate_profile()
+        raw = res[1] if isinstance(res, tuple) else res
+        if not isinstance(raw, dict):
+            return {"platform": "cutshort", "error": str(raw)}
         return {
             "platform": "cutshort",
             "name": raw.get("name"),
             "email": raw.get("email"),
             "mobile": raw.get("phone"),
             "headline": raw.get("headline"),
-            "summary": raw.get("bio") or raw.get("summary"),
-            "location": raw.get("location"),
+            "summary": raw.get("summary") or raw.get("bio"),
+            "location": str(raw.get("locations", [""])[0] if isinstance(raw.get("locations"), list) and raw.get("locations") else raw.get("location", "")),
             "skills": raw.get("skills", []),
-            "employment": raw.get("experiences", []),
-            "education": raw.get("educations", []),
+            "current_company": raw.get("current_company"),
+            "experience_years": raw.get("experience_years"),
             "raw": raw,
         }
 
     def update_profile(self, action: str, payload: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Dict[str, Any]:
         payload = payload or {}
         if action == "touch_pulse":
-            return client.touch_profile_pulse()
-        elif action in ["update_basic", "update_summary", "update_skills"]:
-            return client.update_candidate_profile(payload)
+            res = client.touch_profile_pulse()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
+        elif action in ["update_basic", "update_summary", "update_headline", "update_skills"]:
+            res = client.update_candidate_profile(
+                headline=payload.get("headline"),
+                summary=payload.get("summary") or payload.get("bio"),
+                experience=payload.get("experience_years") or payload.get("experience"),
+                current_company=payload.get("current_company"),
+                skills=payload.get("skills"),
+                locations=[payload.get("location")] if payload.get("location") else payload.get("locations"),
+                preferred_salary=payload.get("preferred_salary"),
+            )
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"result": raw}
         return {"success": False, "error": f"Unknown update action: {action}"}
 
     def manage_account(self, action: str, **kwargs: Any) -> Dict[str, Any]:
         if action == "recruiter_inbox" or action == "inbox":
-            return client.get_conversations()
+            res = client.get_conversations()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "metrics" or action == "pipeline":
-            return client.get_pipeline_metrics()
+            res = client.get_pipeline_metrics()
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "reply":
-            return client.send_reply_to_recruiter(
+            res = client.send_reply_to_recruiter(
                 conversation_id=kwargs.get("conversation_id", ""),
                 message=kwargs.get("message", ""),
             )
+            raw = res[1] if isinstance(res, tuple) else res
+            return raw if isinstance(raw, dict) else {"raw": raw}
         return {"success": False, "error": f"Unsupported account action: {action}"}
