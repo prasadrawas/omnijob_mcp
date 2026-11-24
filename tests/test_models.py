@@ -46,12 +46,12 @@ class TestNormalizedModels(unittest.TestCase):
     def test_candidate_profile(self):
         prof = CandidateProfile(
             platform="naukri",
-            name="Prasad Rawas",
-            email="contactprasadrawas@gmail.com",
+            name="Test Candidate",
+            email="candidate@example.com",
             location="Pune",
             skills=["Python", "FastMCP", "Docker"],
         )
-        self.assertEqual(prof.name, "Prasad Rawas")
+        self.assertEqual(prof.name, "Test Candidate")
         self.assertEqual(len(prof.skills), 3)
 
     def test_application_result(self):

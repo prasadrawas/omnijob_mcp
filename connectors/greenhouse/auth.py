@@ -100,11 +100,18 @@ def get_pipeline_history() -> List[Dict[str, Any]]:
 
 def discover_candidate_profile() -> Dict[str, Any]:
     """
-    Discover candidate profile from master_resume.json in the workspace
-    or return complete default profile for Prasad Rawas.
+    Discover candidate profile from environment variables or master_resume.json in workspace.
     """
+    default_name = os.getenv("CANDIDATE_NAME", "Candidate User")
+    default_email = os.getenv("CANDIDATE_EMAIL", "candidate@example.com")
+    default_phone = os.getenv("CANDIDATE_PHONE", "+91 9876543210")
+    default_location = os.getenv("CANDIDATE_LOCATION", "Pune, India")
+    default_linkedin = os.getenv("CANDIDATE_LINKEDIN", "https://linkedin.com")
+    default_github = os.getenv("CANDIDATE_GITHUB", "https://github.com")
+    default_resume = os.getenv("CANDIDATE_RESUME_PATH", "")
+
     # Attempt to load from data/master_resume.json or data/dummy_master_resume.json
-    workspace_root = Path(__file__).resolve().parent.parent
+    workspace_root = Path(__file__).resolve().parent.parent.parent
     data_paths = [
         workspace_root / "data" / "master_resume.json",
         workspace_root / "data" / "dummy_master_resume.json",
@@ -118,52 +125,57 @@ def discover_candidate_profile() -> Dict[str, Any]:
                     basics = data.get("basics", {})
                     if basics:
                         # Find LinkedIn and GitHub
-                        linkedin_url = ""
-                        github_url = ""
+                        linkedin_url = default_linkedin
+                        github_url = default_github
                         for prof in basics.get("profiles", []):
                             net = (prof.get("network") or "").lower()
                             if "linkedin" in net:
-                                linkedin_url = prof.get("url", "")
+                                linkedin_url = prof.get("url", default_linkedin)
                             elif "github" in net:
-                                github_url = prof.get("url", "")
+                                github_url = prof.get("url", default_github)
 
-                        name_parts = (basics.get("name") or "Prasad Rawas").split(" ", 1)
+                        full_name = basics.get("name") or default_name
+                        name_parts = full_name.split(" ", 1)
                         first_name = name_parts[0]
                         last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+                        city = basics.get("location", {}).get("city", "")
+                        loc_str = f"{city}, India" if city else default_location
 
                         return {
                             "first_name": first_name,
                             "last_name": last_name,
-                            "full_name": basics.get("name", "Prasad Rawas"),
-                            "email": basics.get("email", "contactprasadrawas@gmail.com"),
-                            "phone": basics.get("phone", "+91 7276974942"),
-                            "location": basics.get("location", {}).get("city", "Pune") + ", India",
-                            "linkedin_url": linkedin_url or "https://www.linkedin.com/in/prasadrawas",
-                            "github_url": github_url or "https://github.com/prasadrawas",
+                            "full_name": full_name,
+                            "email": basics.get("email", default_email),
+                            "phone": basics.get("phone", default_phone),
+                            "location": loc_str,
+                            "linkedin_url": linkedin_url,
+                            "github_url": github_url,
                             "summary": basics.get("summary", ""),
                             "work_authorization": "Authorized to work in India; Requires sponsorship for US/EU roles",
-                            "requires_sponsorship": False,  # For India/Remote or set as needed
+                            "requires_sponsorship": False,
                             "gender": basics.get("personal", {}).get("gender", "Male"),
                             "preferred_locations": ["Pune", "Bengaluru", "Remote"],
-                            "resume_path": str(workspace_root / "data" / "pooja_rawas_resume.pdf"),
+                            "resume_path": default_resume,
                         }
             except Exception:
                 pass
 
-    # Default profile
+    # Generic default profile
+    name_parts = default_name.split(" ", 1)
     return {
-        "first_name": "Prasad",
-        "last_name": "Rawas",
-        "full_name": "Prasad Rawas",
-        "email": "contactprasadrawas@gmail.com",
-        "phone": "+91 7276974942",
-        "location": "Pune, India",
-        "linkedin_url": "https://www.linkedin.com/in/prasadrawas",
-        "github_url": "https://github.com/prasadrawas",
-        "summary": "Full Stack & Distributed Systems Engineer specializing in Python, FastAPI, React, Node.js, and autonomous agent systems.",
+        "first_name": name_parts[0],
+        "last_name": name_parts[1] if len(name_parts) > 1 else "",
+        "full_name": default_name,
+        "email": default_email,
+        "phone": default_phone,
+        "location": default_location,
+        "linkedin_url": default_linkedin,
+        "github_url": default_github,
+        "summary": "Full Stack & Distributed Systems Engineer specializing in Python, FastAPI, React, and cloud systems.",
         "work_authorization": "Authorized to work in India; Open to global remote roles",
         "requires_sponsorship": False,
         "gender": "Male",
         "preferred_locations": ["Pune", "Bengaluru", "Remote"],
-        "resume_path": "",
+        "resume_path": default_resume,
     }
