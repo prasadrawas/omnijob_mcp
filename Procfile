@@ -1,1 +1,1 @@
-web: python -m omnijob_mcp --transport sse --port ${PORT:-8000} --host 0.0.0.0
+web: uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 65

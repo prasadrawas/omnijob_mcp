@@ -3,7 +3,27 @@ CLI Entrypoint for running OmniJob MCP Server.
 Supports stdio, sse, and streamable-http transports.
 """
 import os
+import sys
+import types
 import argparse
+from pathlib import Path
+
+# Ensure omnijob_mcp package is importable regardless of working directory
+_ROOT = Path(__file__).resolve().parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(_ROOT.parent))
+
+if "omnijob_mcp" not in sys.modules:
+    try:
+        import omnijob_mcp  # type: ignore
+    except ModuleNotFoundError:
+        _pkg = types.ModuleType("omnijob_mcp")
+        _pkg.__path__ = [str(_ROOT)]
+        _pkg.__file__ = str(_ROOT / "__init__.py")
+        sys.modules["omnijob_mcp"] = _pkg
+
 from omnijob_mcp.server import run_server
 
 

@@ -14,8 +14,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy source repository into /app/omnijob_mcp
-COPY . /app/omnijob_mcp/
+# Copy source repository into /app
+COPY . /app/
+RUN pip install --no-cache-dir -e .
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -30,5 +31,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Default command: run in SSE mode respecting Railway's dynamic $PORT and 0.0.0.0 host
-CMD ["sh", "-c", "python -m omnijob_mcp --transport ${MCP_TRANSPORT:-sse} --port ${PORT:-8000} --host 0.0.0.0"]
+# Default command: run in SSE/HTTP mode respecting Railway's dynamic $PORT and 0.0.0.0 host
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 65"]

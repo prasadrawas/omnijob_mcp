@@ -13,10 +13,29 @@ Implements the Connector Design Pattern exposing 7 High-Level Standardized Meta-
 7. `manage_session`: Unified authentication dashboard, token renewal, cache clearing
 """
 import os
+import sys
 import time
+import types
 import asyncio
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Union, Literal
 from concurrent.futures import ThreadPoolExecutor
+
+# Ensure omnijob_mcp package is importable regardless of working directory (Nixpacks / Docker / local)
+_ROOT = Path(__file__).resolve().parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(_ROOT.parent))
+
+if "omnijob_mcp" not in sys.modules:
+    try:
+        import omnijob_mcp  # type: ignore
+    except ModuleNotFoundError:
+        _pkg = types.ModuleType("omnijob_mcp")
+        _pkg.__path__ = [str(_ROOT)]
+        _pkg.__file__ = str(_ROOT / "__init__.py")
+        sys.modules["omnijob_mcp"] = _pkg
 
 from starlette.requests import Request
 from starlette.responses import Response, JSONResponse, HTMLResponse
@@ -610,4 +629,15 @@ def run_server(transport: str = "stdio", port: Optional[int] = None, host: str =
         mcp.run(transport="streamable-http", host=host, port=port)
     else:
         mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="OmniJob MCP Server")
+    parser.add_argument("--transport", default=os.getenv("MCP_TRANSPORT", "sse"), choices=["stdio", "sse", "streamable-http"])
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", 8000)))
+    parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"))
+    args = parser.parse_args()
+    run_server(transport=args.transport, port=args.port, host=args.host)
+
 
