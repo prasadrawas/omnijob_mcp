@@ -28,6 +28,7 @@ class TestConnectorRegistry(unittest.TestCase):
     def test_connector_retrieval(self):
         foundit = self.registry.get("foundit")
         self.assertIsNotNone(foundit)
+        assert foundit is not None
         self.assertIsInstance(foundit, BaseConnector)
         self.assertEqual(foundit.name, "foundit")
 

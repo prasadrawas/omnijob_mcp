@@ -160,13 +160,25 @@ class NaukriConnector(BaseConnector):
             return profile.update_summary(summary=payload.get("summary", ""))
         elif action == "update_skills":
             skills = payload.get("skills") or kwargs.get("skills") or []
-            return profile.update_key_skills(skills=skills)
+            if isinstance(skills, list):
+                skills_csv = ", ".join(str(s) for s in skills)
+            else:
+                skills_csv = str(skills)
+            return profile.update_key_skills(skills_csv=skills_csv)
         elif action == "update_notice_period":
-            return profile.update_notice_period(notice_period=payload.get("notice_period", "30 Days"))
+            val = payload.get("days") or payload.get("notice_period", 30)
+            try:
+                days = int(val)
+            except (ValueError, TypeError):
+                days = 30
+            return profile.update_notice_period(days=days)
         elif action == "update_location":
-            return profile.update_location(city_id=payload.get("city_id"), city_name=payload.get("city_name"))
+            city_id = int(payload.get("city_id") or 139)
+            city_name = str(payload.get("city_name") or "Pune")
+            return profile.update_location(city_id=city_id, city_name=city_name)
         elif action == "sync_full":
-            return profile.sync_full_profile(payload=payload)
+            resume_source = payload.get("resume_source") or payload
+            return profile.sync_full_profile(resume_source=resume_source)
         elif action == "audit_duplicates":
             return duplicates.audit_profile_duplicates()
         return {"success": False, "error": f"Unknown update action: {action}"}
@@ -183,7 +195,9 @@ class NaukriConnector(BaseConnector):
         elif action == "blocked_companies":
             return analytics.get_blocked_companies()
         elif action == "block_company":
-            return analytics.block_company(company_id=kwargs.get("company_id"), company_name=kwargs.get("company_name"))
+            company_id = str(kwargs.get("company_id") or "")
+            company_name = str(kwargs.get("company_name") or kwargs.get("company") or "")
+            return analytics.block_company(company_id=company_id, company_name=company_name)
         return {"success": False, "error": f"Unsupported account action: {action}"}
 
     def lookup_taxonomy(self, type_name: str, query: str, **kwargs: Any) -> Dict[str, Any]:

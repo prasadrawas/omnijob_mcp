@@ -172,15 +172,46 @@ class HiristConnector(BaseConnector):
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_basic":
-            res = client.update_personal_details(payload)
+            exp_raw = payload.get("exp_year") or payload.get("experience_years")
+            exp_year_val: Optional[int] = None
+            if exp_raw is not None:
+                try:
+                    exp_year_val = int(exp_raw)
+                except (ValueError, TypeError):
+                    exp_year_val = None
+
+            exp_m_raw = payload.get("exp_month")
+            exp_month_val: Optional[int] = None
+            if exp_m_raw is not None:
+                try:
+                    exp_month_val = int(exp_m_raw)
+                except (ValueError, TypeError):
+                    exp_month_val = None
+
+            res = client.update_personal_details(
+                name=str(payload["name"]) if payload.get("name") is not None else None,
+                current_designation=str(payload.get("current_designation") or payload.get("designation")) if (payload.get("current_designation") or payload.get("designation")) else None,
+                current_organization=str(payload.get("current_organization") or payload.get("company")) if (payload.get("current_organization") or payload.get("company")) else None,
+                exp_year=exp_year_val,
+                exp_month=exp_month_val,
+                current_ctc=str(payload["current_ctc"]) if payload.get("current_ctc") is not None else None,
+                expected_ctc=str(payload["expected_ctc"]) if payload.get("expected_ctc") is not None else None,
+                notice_period=payload.get("notice_period"),
+                phone=payload.get("phone"),
+                current_location=str(payload.get("current_location") or payload.get("location")) if (payload.get("current_location") or payload.get("location")) else None,
+                linkedin=str(payload["linkedin"]) if payload.get("linkedin") is not None else None,
+                career_objective=str(payload.get("career_objective") or payload.get("summary")) if (payload.get("career_objective") or payload.get("summary")) else None,
+            )
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_employment":
-            res = client.update_work_experience(payload)
+            experiences: List[Dict[str, Any]] = [payload] if isinstance(payload, dict) else (payload if isinstance(payload, list) else [])
+            res = client.update_work_experience(experiences=experiences)
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         elif action == "update_education":
-            res = client.update_education(payload)
+            educations: List[Dict[str, Any]] = [payload] if isinstance(payload, dict) else (payload if isinstance(payload, list) else [])
+            res = client.update_education(educations=educations)
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         return {"success": False, "error": f"Unknown update action: {action}"}
@@ -195,8 +226,8 @@ class HiristConnector(BaseConnector):
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "block_company":
-            company = kwargs.get("company_name") or kwargs.get("company", "")
-            res = client.block_or_unblock_company(company=company, block=True)
+            company_id = str(kwargs.get("company_id") or kwargs.get("company_name") or kwargs.get("company", ""))
+            res = client.block_or_unblock_company(company_id=company_id, block=True)
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"raw": raw}
         return {"success": False, "error": f"Unsupported account action: {action}"}

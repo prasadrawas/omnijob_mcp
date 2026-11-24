@@ -2,7 +2,7 @@
 Connector Registry for OmniJob MCP.
 Provides lazy-loaded, thread-safe access to all 7 job platform connectors.
 """
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 import logging
 from threading import Lock
 

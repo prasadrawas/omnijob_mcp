@@ -16,6 +16,7 @@ class TestConnectorsUnit(unittest.TestCase):
             with self.subTest(connector=name):
                 conn = self.registry.get(name)
                 self.assertIsNotNone(conn, f"Connector {name} could not be loaded")
+                assert conn is not None
                 self.assertIsInstance(conn, BaseConnector)
                 self.assertEqual(conn.name, name)
                 self.assertTrue(len(conn.display_name) > 0)
@@ -26,6 +27,7 @@ class TestConnectorsUnit(unittest.TestCase):
         for name in names:
             with self.subTest(connector=name):
                 conn = self.registry.get(name)
+                assert conn is not None
                 status = conn.get_session_status()
                 self.assertIsInstance(status, dict)
                 health = conn.get_health()

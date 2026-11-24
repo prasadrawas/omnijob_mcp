@@ -139,14 +139,44 @@ class CutshortConnector(BaseConnector):
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         elif action in ["update_basic", "update_summary", "update_headline", "update_skills"]:
+            raw_locs = payload.get("locations")
+            loc_list: Optional[List[str]] = None
+            if payload.get("location"):
+                loc_list = [str(payload.get("location"))]
+            elif isinstance(raw_locs, list):
+                loc_list = [str(x) for x in raw_locs]
+
+            skills_raw = payload.get("skills")
+            skills_list: Optional[List[str]] = None
+            if isinstance(skills_raw, list):
+                skills_list = [str(x) for x in skills_raw]
+            elif isinstance(skills_raw, str):
+                skills_list = [s.strip() for s in skills_raw.split(",") if s.strip()]
+
+            exp_raw = payload.get("experience_years") or payload.get("experience")
+            exp_val: Optional[int] = None
+            if exp_raw is not None:
+                try:
+                    exp_val = int(exp_raw)
+                except (ValueError, TypeError):
+                    exp_val = None
+
+            sal_raw = payload.get("preferred_salary")
+            sal_val: Optional[int] = None
+            if sal_raw is not None:
+                try:
+                    sal_val = int(sal_raw)
+                except (ValueError, TypeError):
+                    sal_val = None
+
             res = client.update_candidate_profile(
-                headline=payload.get("headline"),
-                summary=payload.get("summary") or payload.get("bio"),
-                experience=payload.get("experience_years") or payload.get("experience"),
-                current_company=payload.get("current_company"),
-                skills=payload.get("skills"),
-                locations=[payload.get("location")] if payload.get("location") else payload.get("locations"),
-                preferred_salary=payload.get("preferred_salary"),
+                headline=str(payload["headline"]) if payload.get("headline") is not None else None,
+                summary=str(payload.get("summary") or payload.get("bio")) if (payload.get("summary") or payload.get("bio")) else None,
+                experience=exp_val,
+                current_company=str(payload["current_company"]) if payload.get("current_company") is not None else None,
+                skills=skills_list,
+                locations=loc_list,
+                preferred_salary=sal_val,
             )
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
@@ -162,9 +192,10 @@ class CutshortConnector(BaseConnector):
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"raw": raw}
         elif action == "reply":
+            thread_id = str(kwargs.get("thread_id") or kwargs.get("conversation_id", ""))
             res = client.send_reply_to_recruiter(
-                conversation_id=kwargs.get("conversation_id", ""),
-                message=kwargs.get("message", ""),
+                thread_id=thread_id,
+                message=str(kwargs.get("message", "")),
             )
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"raw": raw}

@@ -134,7 +134,29 @@ class WellfoundConnector(BaseConnector):
         if action == "touch_pulse":
             return self._client.touch_profile_pulse()
         elif action in ["update_basic", "update_summary", "update_skills"]:
-            return self._client.update_profile(payload)
+            skills_raw = payload.get("skills")
+            skills_list: Optional[List[str]] = None
+            if isinstance(skills_raw, list):
+                skills_list = [str(s) for s in skills_raw]
+            elif isinstance(skills_raw, str):
+                skills_list = [s.strip() for s in skills_raw.split(",") if s.strip()]
+
+            exp_raw = payload.get("experience_years") or payload.get("years_experience")
+            exp_float: Optional[float] = None
+            if exp_raw is not None:
+                try:
+                    exp_float = float(exp_raw)
+                except (ValueError, TypeError):
+                    exp_float = None
+
+            return self._client.update_profile(
+                headline=str(payload["headline"]) if payload.get("headline") is not None else None,
+                bio=str(payload.get("summary") or payload.get("bio")) if (payload.get("summary") or payload.get("bio")) else None,
+                primary_role=str(payload.get("role") or payload.get("primary_role")) if (payload.get("role") or payload.get("primary_role")) else None,
+                years_experience=exp_float,
+                location=str(payload["location"]) if payload.get("location") is not None else None,
+                skills=skills_list,
+            )
         return {"success": False, "error": f"Unknown update action: {action}"}
 
     def manage_account(self, action: str, **kwargs: Any) -> Dict[str, Any]:

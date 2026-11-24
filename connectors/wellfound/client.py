@@ -8,11 +8,13 @@ import time
 from typing import Dict, Any, List, Optional, Union
 
 try:
-    from curl_cffi import requests as curl_requests
+    from curl_cffi import requests as curl_requests  # type: ignore[import-untyped,import-not-found]
     HAS_CURL_CFFI = True
 except ImportError:
-    import httpx  # type: ignore
+    curl_requests = None  # type: ignore
     HAS_CURL_CFFI = False
+
+import httpx
 
 from omnijob_mcp.connectors.wellfound.auth import resolve_credentials, build_cookie_header
 
@@ -67,7 +69,7 @@ class WellfoundClient:
         headers = self._get_headers(wellfound_cookie, cf_clearance)
         html = ""
 
-        if HAS_CURL_CFFI:
+        if HAS_CURL_CFFI and curl_requests is not None:
             try:
                 s = curl_requests.Session(impersonate="chrome131")
                 resp = s.get(url, headers=headers, timeout=15)

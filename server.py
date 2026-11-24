@@ -540,17 +540,26 @@ def get_app() -> Any:
     sse_subapp = mcp.sse_app(transport_security=sec)
     http_subapp = mcp.streamable_http_app(streamable_http_path="/mcp", transport_security=sec)
 
-    http_handler = None
+    from typing import Callable
+
+    http_handler: Optional[Callable[..., Any]] = None
     for r in http_subapp.routes:
         if getattr(r, "path", "") == "/mcp":
-            http_handler = r.endpoint
+            ep = getattr(r, "endpoint", None)
+            if callable(ep):
+                http_handler = ep
             break
 
-    sse_handler = None
+    sse_handler: Optional[Callable[..., Any]] = None
     for r in sse_subapp.routes:
         if getattr(r, "path", "") == "/sse":
-            sse_handler = r.endpoint
+            ep = getattr(r, "endpoint", None)
+            if callable(ep):
+                sse_handler = ep
             break
+
+    if http_handler is None or sse_handler is None:
+        raise RuntimeError("Failed to resolve MCP handler endpoints from sub-apps")
 
     routes = [
         Route("/sse", endpoint=sse_handler, methods=["GET", "HEAD"]),
