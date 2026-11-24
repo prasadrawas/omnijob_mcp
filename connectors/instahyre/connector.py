@@ -151,7 +151,26 @@ class InstahyreConnector(BaseConnector):
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         elif action in ["update_basic", "update_summary", "update_skills"]:
-            res = client.update_candidate_profile(personal=payload.get("personal"), jsp=payload.get("jsp"))
+            personal = payload.get("personal")
+            jsp = payload.get("jsp")
+            if not personal and not jsp:
+                personal_dict: Dict[str, Any] = {}
+                if payload.get("current_company") or payload.get("company"):
+                    personal_dict["current_company"] = str(payload.get("current_company") or payload.get("company"))
+                if payload.get("current_designation") or payload.get("designation") or payload.get("headline"):
+                    personal_dict["current_designation"] = str(payload.get("current_designation") or payload.get("designation") or payload.get("headline"))
+                exp_raw = payload.get("experience_years") or payload.get("total_experience")
+                if exp_raw is not None:
+                    try:
+                        personal_dict["total_experience"] = int(exp_raw)
+                    except (ValueError, TypeError):
+                        pass
+                if payload.get("skills"):
+                    sk = payload.get("skills")
+                    personal_dict["main_skills"] = ",".join(str(s) for s in sk) if isinstance(sk, list) else str(sk)
+                personal = personal_dict if personal_dict else None
+
+            res = client.update_candidate_profile(personal=personal, jsp=jsp)
             raw = res[1] if isinstance(res, tuple) else res
             return raw if isinstance(raw, dict) else {"result": raw}
         return {"success": False, "error": f"Unknown update action: {action}"}
