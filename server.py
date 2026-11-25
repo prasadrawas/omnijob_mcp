@@ -99,7 +99,12 @@ async def health_check(request: Request) -> Response:
 
 @mcp.custom_route("/", methods=["GET"])
 async def landing_page(request: Request) -> Response:
-    """Landing dashboard displaying available connectors and capabilities."""
+    """Landing dashboard displaying available connectors and capabilities, or redirects to /sse if client expects SSE."""
+    accept = request.headers.get("accept", "")
+    if "text/event-stream" in accept:
+        from starlette.responses import RedirectResponse
+        return RedirectResponse(url="/sse", status_code=307)
+
     status_report = registry.get_status_all()
     rows = ""
     for name, c in status_report.get("connectors", {}).items():
