@@ -30,5 +30,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Default command: run in SSE/HTTP mode respecting Railway's dynamic $PORT and 0.0.0.0 host
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 65
+# Default command: run via python server.py which safely reads PORT as integer from env
+CMD ["python", "server.py", "--transport", "sse"]
