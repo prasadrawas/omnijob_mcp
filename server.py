@@ -56,15 +56,16 @@ server_cache = TTLCache(default_ttl=180, max_size=1000)
 mcp = FastMCP(
     "omnijob-mcp",
     instructions=(
-        "OmniJob MCP Server (Unified 7-Platform Architecture): Production MCP server for job search, "
-        "application pipelines, candidate profile synchronization, and recruiter communication across 7 platforms:\n"
+        "OmniJob MCP Server (Unified 8-Platform Architecture): Production MCP server for job search, "
+        "application pipelines, candidate profile synchronization, and recruiter communication across 8 platforms:\n"
         "- Naukri.com (`naukri`)\n"
         "- Hirist.tech (`hirist`)\n"
         "- Wellfound / AngelList (`wellfound`)\n"
         "- Instahyre (`instahyre`)\n"
         "- Cutshort.io (`cutshort`)\n"
         "- Greenhouse ATS (`greenhouse`)\n"
-        "- Foundit / Monster APAC (`foundit`)\n\n"
+        "- Foundit / Monster APAC (`foundit`)\n"
+        "- Himalayas Remote (`himalayas`)\n\n"
         "CORE TOOLS (Total 7 Meta-Tools):\n"
         "1. `search_jobs`: Search jobs on any individual platform or fan-out across all platforms with connector='all'.\n"
         "2. `get_job_details`: Deep inspect JD, requirements, and questionnaire schema.\n"
@@ -91,7 +92,7 @@ async def health_check(request: Request) -> Response:
         "service": "omnijob-mcp",
         "version": "1.0.0",
         "authenticated_platforms": status_report.get("authenticated_count", 0),
-        "total_platforms": status_report.get("total_connectors", 7),
+        "total_platforms": status_report.get("total_connectors", 8),
         "connectors": status_report.get("connectors", {}),
     })
 
@@ -170,7 +171,7 @@ async def landing_page(request: Request) -> Response:
 
 @mcp.tool()
 async def search_jobs(
-    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"] = "all",
+    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"] = "all",
     query: str = "Software Engineer",
     location: Optional[str] = "Pune",
     experience: Optional[int] = None,
@@ -249,7 +250,7 @@ async def search_jobs(
 
 @mcp.tool()
 async def get_job_details(
-    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"],
+    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"],
     job_id: str,
     board_token: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -278,7 +279,7 @@ async def get_job_details(
 
 @mcp.tool()
 async def manage_job_pipeline(
-    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"],
+    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"],
     action: Literal["apply", "can_apply", "save", "unsave", "get_applied", "get_saved"] = "can_apply",
     job_id: Optional[str] = None,
     answers: Optional[Dict[str, Any]] = None,
@@ -358,7 +359,7 @@ async def manage_job_pipeline(
 
 @mcp.tool()
 async def manage_profile(
-    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"] = "naukri",
+    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"] = "naukri",
     action: Literal["get", "update_basic", "update_summary", "update_headline", "update_skills", "update_employment", "update_education", "touch_pulse", "sync_all"] = "get",
     fields: Optional[List[str]] = None,
     payload: Optional[Dict[str, Any]] = None,
@@ -419,7 +420,7 @@ async def manage_profile(
 
 @mcp.tool()
 async def manage_account(
-    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"],
+    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"],
     action: Literal["recommendations", "recruiter_inbox", "alerts", "analytics", "salary_components", "blocked_companies", "block_company", "boards"] = "recommendations",
     company_name: Optional[str] = None,
     company_id: Optional[str] = None,
@@ -472,7 +473,7 @@ async def manage_account(
 
 @mcp.tool()
 async def manage_taxonomy(
-    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"] = "foundit",
+    connector: Literal["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"] = "foundit",
     type: Literal["skills", "companies", "locations", "institutes", "designations"] = "skills",
     query: str = "Python",
     limit: int = 10,
@@ -506,7 +507,7 @@ async def manage_taxonomy(
 
 @mcp.tool()
 async def manage_session(
-    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"] = "all",
+    connector: Literal["all", "naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"] = "all",
     action: Literal["status", "refresh", "set_token", "clear_cache"] = "status",
     tokens: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:

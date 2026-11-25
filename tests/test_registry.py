@@ -12,7 +12,7 @@ class TestConnectorRegistry(unittest.TestCase):
 
     def test_registered_connectors(self):
         connectors = self.registry.list_connectors()
-        expected = ["cutshort", "foundit", "greenhouse", "hirist", "instahyre", "naukri", "wellfound"]
+        expected = ["cutshort", "foundit", "greenhouse", "himalayas", "hirist", "instahyre", "naukri", "wellfound"]
         for exp in expected:
             self.assertIn(exp, connectors)
 
@@ -24,6 +24,8 @@ class TestConnectorRegistry(unittest.TestCase):
         self.assertEqual(self.registry.resolve_name("cut_short"), "cutshort")
         self.assertEqual(self.registry.resolve_name("insta_hyre"), "instahyre")
         self.assertEqual(self.registry.resolve_name("green_house"), "greenhouse")
+        self.assertEqual(self.registry.resolve_name("himalayas.app"), "himalayas")
+        self.assertEqual(self.registry.resolve_name("himalaya"), "himalayas")
 
     def test_connector_retrieval(self):
         foundit = self.registry.get("foundit")
@@ -38,9 +40,9 @@ class TestConnectorRegistry(unittest.TestCase):
 
     def test_get_status_all(self):
         status = self.registry.get_status_all()
-        self.assertEqual(status["total_connectors"], 7)
+        self.assertEqual(status["total_connectors"], 8)
         self.assertIn("connectors", status)
-        for name in ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"]:
+        for name in ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"]:
             self.assertIn(name, status["connectors"])
 
 

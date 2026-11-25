@@ -17,7 +17,7 @@ from omnijob_mcp.server import (
 class TestServerMetaTools(unittest.TestCase):
     def test_manage_session_status_all(self):
         result = asyncio.run(manage_session(connector="all", action="status"))
-        self.assertEqual(result["total_connectors"], 7)
+        self.assertEqual(result["total_connectors"], 8)
         self.assertIn("connectors", result)
         self.assertGreaterEqual(result["authenticated_count"], 1)
 

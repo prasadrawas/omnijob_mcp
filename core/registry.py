@@ -30,6 +30,8 @@ CONNECTOR_ALIASES = {
     "instahyre.com": "instahyre",
     "green_house": "greenhouse",
     "greenhouse.io": "greenhouse",
+    "himalaya": "himalayas",
+    "himalayas.app": "himalayas",
 }
 
 
@@ -103,6 +105,13 @@ class ConnectorRegistry:
             self.register_class("foundit", FounditConnector)
         except Exception as e:
             logger.warning(f"Failed to register Foundit connector: {e}")
+
+        # 8. Himalayas
+        try:
+            from omnijob_mcp.connectors.himalayas.connector import HimalayasConnector
+            self.register_class("himalayas", HimalayasConnector)
+        except Exception as e:
+            logger.warning(f"Failed to register Himalayas connector: {e}")
 
     def register_class(self, name: str, cls: Type[BaseConnector]) -> None:
         self._connector_classes[name.lower()] = cls

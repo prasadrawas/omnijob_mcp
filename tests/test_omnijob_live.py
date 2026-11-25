@@ -29,10 +29,10 @@ class TestOmniJobLive(unittest.TestCase):
 
     def test_session_dashboard(self):
         result = asyncio.run(manage_session(connector="all", action="status"))
-        self.assertEqual(result.get("total_connectors"), 7)
+        self.assertEqual(result.get("total_connectors"), 8)
         auth_count = int(result.get("authenticated_count") or 0)
-        self.assertGreaterEqual(auth_count, 5)
-        print("OmniJob Authenticated Connectors:", f"{result.get('authenticated_count')}/7")
+        self.assertGreaterEqual(auth_count, 6)
+        print("OmniJob Authenticated Connectors:", f"{result.get('authenticated_count')}/8")
 
 
 if __name__ == "__main__":

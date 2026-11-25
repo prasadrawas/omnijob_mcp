@@ -11,7 +11,7 @@ class TestConnectorsUnit(unittest.TestCase):
         self.registry = ConnectorRegistry.get_instance()
 
     def test_all_connectors_implement_base(self):
-        names = ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"]
+        names = ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"]
         for name in names:
             with self.subTest(connector=name):
                 conn = self.registry.get(name)
@@ -23,7 +23,7 @@ class TestConnectorsUnit(unittest.TestCase):
                 self.assertTrue(len(conn.supported_features) > 0)
 
     def test_session_status_and_health(self):
-        names = ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit"]
+        names = ["naukri", "hirist", "wellfound", "instahyre", "cutshort", "greenhouse", "foundit", "himalayas"]
         for name in names:
             with self.subTest(connector=name):
                 conn = self.registry.get(name)
