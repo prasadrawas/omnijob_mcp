@@ -555,52 +555,28 @@ async def manage_session(
 # ---------------------------------------------------------------------------
 
 def get_app() -> Any:
-    """Return unified Starlette app supporting both Streamable HTTP (/mcp) and SSE (/sse), with full CORS."""
-    from starlette.applications import Starlette
+    """Return official FastMCP Starlette app for SSE, with CORS, health check, and /mcp route."""
     from starlette.middleware.cors import CORSMiddleware
     from starlette.routing import Route
     from mcp.server.transport_security import TransportSecuritySettings
 
     sec = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    sse_subapp = mcp.sse_app(transport_security=sec)
-    http_subapp = mcp.streamable_http_app(streamable_http_path="/mcp", transport_security=sec)
+    sse_app = mcp.sse_app(transport_security=sec)
 
-    from typing import Callable
+    # Informational endpoint for /mcp
+    async def mcp_info(request: Request) -> Response:
+        return JSONResponse({
+            "service": "omnijob-mcp",
+            "transport": "sse",
+            "sse_endpoint": "/sse",
+            "message_endpoint": "/messages",
+            "status": "healthy"
+        })
 
-    http_handler: Optional[Callable[..., Any]] = None
-    for r in http_subapp.routes:
-        if getattr(r, "path", "") == "/mcp":
-            ep = getattr(r, "endpoint", None)
-            if callable(ep):
-                http_handler = ep
-            break
-
-    sse_handler: Optional[Callable[..., Any]] = None
-    for r in sse_subapp.routes:
-        if getattr(r, "path", "") == "/sse":
-            ep = getattr(r, "endpoint", None)
-            if callable(ep):
-                sse_handler = ep
-            break
-
-    if http_handler is None or sse_handler is None:
-        raise RuntimeError("Failed to resolve MCP handler endpoints from sub-apps")
-
-    routes = [
-        Route("/sse", endpoint=sse_handler, methods=["GET", "HEAD"]),
-        Route("/sse", endpoint=http_handler, methods=["POST"]),
-        Route("/mcp", endpoint=http_handler, methods=["GET", "POST", "HEAD"]),
-        Route("/", endpoint=http_handler, methods=["POST"]),
-        *[r for r in sse_subapp.routes if getattr(r, "path", "") not in ("/sse", "/mcp")],
-    ]
-
-    unified_app = Starlette(
-        routes=routes,
-        lifespan=http_subapp.router.lifespan_context,
-    )
+    sse_app.routes.append(Route("/mcp", endpoint=mcp_info, methods=["GET", "POST", "HEAD"]))
 
     return CORSMiddleware(
-        unified_app,
+        sse_app,
         allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*"],
@@ -619,6 +595,50 @@ def run_server(transport: str = "stdio", port: Optional[int] = None, host: str =
     if transport == "sse":
         import uvicorn
         import anyio
+        import threading
+
+        # Dual-port bridge: If cloud platforms (like Railway) route incoming traffic
+        # to standard port 8000 (via Dockerfile EXPOSE) while allocating dynamic $PORT,
+        # bridge port 8000 -> $PORT so traffic on both ports is served seamlessly.
+        if port != 8000:
+            def _start_bridge(bridge_port: int, target_port: int) -> None:
+                async def pipe(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+                    try:
+                        while not r.at_eof():
+                            data = await r.read(65536)
+                            if not data:
+                                break
+                            w.write(data)
+                            await w.drain()
+                    except Exception:
+                        pass
+                    finally:
+                        try:
+                            w.close()
+                        except Exception:
+                            pass
+
+                async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                    try:
+                        t_reader, t_writer = await asyncio.open_connection("127.0.0.1", target_port)
+                        await asyncio.gather(pipe(reader, t_writer), pipe(t_reader, writer))
+                    except Exception:
+                        writer.close()
+
+                async def run_b() -> None:
+                    try:
+                        srv = await asyncio.start_server(handle, "0.0.0.0", bridge_port)
+                        async with srv:
+                            await srv.serve_forever()
+                    except Exception as e:
+                        print(f"Dual-port bridge on port {bridge_port} not started (already bound): {e}")
+
+                asyncio.run(run_b())
+
+            t = threading.Thread(target=_start_bridge, args=(8000, port), daemon=True)
+            t.start()
+            print(f"Dual-port bridge active: port 8000 -> {port}")
+
         print(f"Starting omnijob-mcp in SSE mode on http://{host}:{port} ...")
         app_instance = get_app()
         config = uvicorn.Config(
